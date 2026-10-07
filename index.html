@@ -142,6 +142,11 @@ textarea.inp{resize:vertical; min-height:92px}
 .path b{font-family:var(--f-display); font-weight:400; font-size:20px}
 .path span{color:var(--ink-soft); font-size:15px}
 .path[aria-pressed="true"]{border-color:var(--c); background:var(--c-soft)}
+.path:hover{border-color:var(--c)}
+.path .emo{font-size:30px; line-height:1.2}
+.card > p.fl{margin:0 0 -8px}
+.cats{grid-template-columns:repeat(2, minmax(0, 1fr))}
+@media (max-width:520px){ .cats{grid-template-columns:1fr} }
 
 /* step 4 builder */
 .builder{display:grid; grid-template-columns:minmax(0,1fr) auto minmax(0,1fr); gap:10px; align-items:start}
@@ -261,11 +266,9 @@ textarea.inp{resize:vertical; min-height:92px}
 
 <script>
 (function(){
-  var KEY = 'idea-stairs-v1';
+  var KEY = 'idea-stairs-v2';
   var KEY_BIG = 'idea-stairs-big';
-  var BLANK = {s1:'', path:'', s2:'', who:'', when:'', act:'', result:'', name:'', colors:[], mood:'', top:'', mid:'', bot:'', maker:'', custom:'', customBase:''};
-  var LABELS = ['', '좋아', '아쉬워', '누가', '딱 하나', '그려봐'];
-  var TAGS = ['', '좋아', '아쉬워 / 더 재밌게', '누가', '딱 하나', '그려봐'];
+  var BLANK = {cat:'', s1:'', path:'', s2:'', who:'', when:'', goal:'', act:'', result:'', name:'', colors:[], mood:'', top:'', mid:'', bot:'', maker:'', custom:'', customBase:''};
   var HEIGHTS = [0, 16, 26, 36, 46, 56];
   var FIELDS = {1:['s1'], 2:['s2'], 3:['who','when'], 4:['act','result'], 5:['name']};
   var COLORS = [
@@ -280,24 +283,189 @@ textarea.inp{resize:vertical; min-height:92px}
     {id:'brown', label:'갈색', name:'갈색', hex:'#9A6B47'},
     {id:'black', label:'검정', name:'검은색', hex:'#2B2B2B'}
   ];
+  /* 카테고리마다 계단 질문·고르기·주문서 문장이 모두 다르다. 2계단 갈림길은 공통으로 a/b 로 저장한다. */
+  var CATS = {
+    study: {
+      name:'학습 도우미', emo:'📚', color:4, kind:'학습 도우미',
+      desc:'헷갈리는 공부를 쉽고 재밌게 도와줘요',
+      l1:'과목',
+      q1:'요즘 배우는 것 중에 뭘 도와주는 앱을 만들까?',
+      sub1:'좋아하는 과목도, 어려운 과목도 좋아. 작게 고를수록 만들기 쉬워.',
+      f1:'공부할 것', ph1:'예: 분수, 영어 단어, 받아쓰기',
+      qs1:['이번 주 수업에서 뭘 배웠어?','시험 전에 제일 외우기 힘든 건 뭐야?','동생에게 가르쳐 주고 싶은 건 뭐야?'],
+      c1:['구구단','분수','도형','영어 단어','받아쓰기','맞춤법','한국사 인물','세계 나라와 수도','과학 용어','속담','독서 기록','시간표 정리'],
+      paths:{
+        a:{title:'막히는 곳 돕기', desc:'헷갈리고 막히는 순간을 해결해요', ph:'예: 분모가 다르면 자꾸 헷갈려요',
+           label:function(q, raw){ return q + ' 공부할 때 어디서 막혀?'; },
+           qs:['어떤 문제에서 자꾸 틀려?','외워도 금방 까먹는 건 뭐야?','친구들은 어디서 헷갈려 해?'],
+           chips:['자꾸 헷갈려요','외워도 금방 까먹어요','내가 뭘 틀렸는지 몰라요','연습할 문제가 부족해요','문제가 너무 길어요','공부 시간을 자꾸 놓쳐요'],
+           line:function(s1, s2){ return t(s1) + ' 공부할 때 막히는 점이 있었어. ' + end(s2); }},
+        b:{title:'놀이처럼 바꾸기', desc:'지루한 공부를 게임처럼 만들어요', ph:'예: 카드 뒤집기 놀이로 만들면 좋겠어요',
+           label:function(q, raw){ return q + js(raw, '을', '를') + ' 어떤 놀이로 바꾸면 좋을까?'; },
+           qs:['좋아하는 게임 규칙을 공부에 붙이면 어떨까?','맞힐 때마다 뭐가 생기면 신날까?','친구랑 같이 하면 어떤 놀이가 될까?'],
+           chips:['퀴즈 대결로 만들면 좋겠어요','카드 뒤집기 놀이로 만들면 좋겠어요','맞히면 스티커를 모아요','타이머 도전으로 해요','레벨이 올라가면 좋겠어요','틀린 문제만 다시 나와요'],
+           line:function(s1, s2){ return t(s1) + ' 공부를 놀이처럼 바꾸고 싶어. ' + end(s2); }}
+      },
+      qs3:['이 공부가 꼭 필요한 사람은 누구야?','하루 중 언제, 몇 분쯤 쓰면 좋을까?','다 쓰고 나면 그 사람은 무엇을 잘하게 될까?'],
+      who:['나','동생','짝꿍','모둠 친구들','우리 반','부모님'],
+      when:['숙제할 때','시험 전날','아침 자습 시간','쉬는 시간','잠자기 전','주말 아침'],
+      goal:{label:'다 쓰고 나면 무엇을 잘하게 될까?', ph:'예: 분수 크기 비교를 3초 만에 해요',
+            chips:['헷갈리던 걸 안 틀려요','외운 게 오래 기억나요','혼자서도 공부할 수 있어요','공부가 덜 지루해요','틀린 문제를 다시 풀어요'],
+            line:function(g){ return '다 쓰고 나면 이렇게 되면 좋겠어. ' + end(g); }},
+      sub4:'문제 하나, 동작 하나! 공부할 때 제일 자주 하는 동작만 남기자.',
+      qs4:['한 문제를 풀 때 손가락으로 뭘 누를까?','맞혔을 때와 틀렸을 때 화면이 어떻게 달라질까?','친구에게 한 문장으로 설명해 볼래?'],
+      act:['문제를 보고 답을 고르면','단어를 보고 뜻을 쓰면','카드를 톡 치면','시작을 누르면','다 외웠어 버튼을 누르면'],
+      res:['맞았는지 바로 알려 줘','카드가 뒤집혀 정답이 보여','틀린 문제만 다시 나와','맞힌 개수가 쌓여','오늘 공부 도장이 찍혀','힌트가 하나 나와'],
+      phAct:'예: 문제를 보고 답을 고르면', phRes:'예: 맞았는지 바로 알려 줘',
+      namePh:'예: 분수 박사',
+      zones:{top:['제목','문제 번호','맞힌 개수','타이머'], mid:['문제','보기 버튼 3개','정답 입력칸','뒤집는 카드','힌트 버튼'], bot:['정답·오답 표시','다음 문제 버튼','다시 풀기 버튼','칭찬 도장']},
+      moods:['차분한','깔끔한','귀여운','도서관','우주','숲속'],
+      rules:['문제와 정답은 초등학생 눈높이에 맞게, 틀린 내용 없이 10개 정도 미리 넣어 줘.'],
+      check:'문제와 정답이 맞는지 교과서나 선생님께 한 번 더 확인할 거예요',
+      up:['틀린 문제만 모아서 다시 풀게 하면 어떨까?','친구가 문제를 직접 만들어 넣을 수 있다면?','공부한 날마다 도장을 찍어 주면 어떨까?']
+    },
+    brain: {
+      name:'두뇌 게임', emo:'🧩', color:5, kind:'두뇌 게임',
+      desc:'기억력·순발력·추리력을 쓰는 게임이에요',
+      l1:'놀이',
+      q1:'어떤 머리 쓰기 놀이가 재밌어?',
+      sub1:'퍼즐, 기억 게임, 수수께끼처럼 머리를 쓰는 놀이면 뭐든 좋아.',
+      f1:'좋아하는 두뇌 놀이', ph1:'예: 같은 그림 찾기, 숫자 퍼즐',
+      qs1:['머리 쓰는 놀이 중에 제일 자신 있는 건 뭐야?','친구랑 할 때 제일 시끄러워지는 놀이는?','보드게임이나 퍼즐 중에 생각나는 거 있어?'],
+      c1:['같은 그림 찾기','다른 그림 찾기','숫자 퍼즐','순서 기억하기','미로 찾기','암산 대결','끝말잇기','스무고개','수수께끼','색깔 글자 게임','숨은 그림 찾기','방탈출'],
+      paths:{
+        a:{title:'새 규칙 넣기', desc:'아는 놀이에 나만의 규칙을 더해요', ph:'예: 시간 안에 못 찾으면 카드가 섞여요',
+           label:function(q, raw){ return q + '에 어떤 새 규칙을 넣어 볼까?'; },
+           qs:['그 놀이가 너무 쉬워질 때는 언제야?','규칙 하나를 거꾸로 바꾸면 어떻게 될까?','깜짝 놀랄 반전을 하나 넣는다면?'],
+           chips:['시간 제한이 있어요','거꾸로 해야 해요','틀리면 카드가 섞여요','힌트는 3번만 써요','가짜 정답이 섞여 있어요','둘이 번갈아 해요'],
+           line:function(s1, s2){ return j(s1, '을', '를') + ' 바탕으로 나만의 새 규칙을 넣은 게임을 만들고 싶어. ' + end(s2); }},
+        b:{title:'점점 어렵게', desc:'레벨과 기록으로 계속 도전하게 해요', ph:'예: 맞힐수록 카드 수가 늘어나요',
+           label:function(q, raw){ return q + js(raw, '을', '를') + ' 어떻게 점점 어렵게 만들까?'; },
+           qs:['1단계와 10단계는 뭐가 다를까?','어떤 기록을 깨고 싶어질까?','너무 어려워서 포기하지 않게 하려면?'],
+           chips:['맞힐수록 빨라져요','카드 수가 늘어나요','숫자가 커져요','최고 기록에 도전해요','별 3개를 모아요','레벨마다 새 그림이 나와요'],
+           line:function(s1, s2){ return j(s1, '을', '를') + ' 바탕으로 점점 어려워지는 게임을 만들고 싶어. ' + end(s2); }}
+      },
+      qs3:['혼자 할까, 둘이 겨룰까?','한 판에 몇 분이면 딱 좋을까?','이 게임을 하면 머리의 어떤 힘이 자랄까?'],
+      who:['나','짝꿍','우리 반','동생','우리 가족','할머니'],
+      when:['쉬는 시간','비 오는 날 점심시간','차 타고 갈 때','심심할 때','저녁 먹고 나서','잠깐 쉬고 싶을 때'],
+      goal:{label:'이 게임을 하면 어떤 힘이 자랄까?', ph:'예: 기억력',
+            chips:['기억력','순발력','추리력','관찰력','계산력','집중력'],
+            line:function(g){ return '이 게임을 하면 ' + j(g, '이', '가') + ' 자라면 좋겠어.'; }},
+      sub4:'게임의 핵심 규칙 하나만! 한 판이 어떻게 굴러가는지 떠올려 봐.',
+      qs4:['게임을 시작하면 제일 먼저 뭘 해?','언제 이기고, 언제 지는 거야?','친구에게 규칙을 한 문장으로 설명해 볼래?'],
+      act:['시작을 누르면','같은 그림 두 장을 고르면','깜빡인 순서대로 누르면','다른 그림을 찾아 누르면','답이 되는 숫자를 고르면'],
+      res:['다음 단계로 넘어가','시간 안에 몇 개 맞혔는지 나와','틀리면 처음부터 다시 해','최고 기록이 바뀌어','정답이면 반짝 효과가 나와','30초 타이머가 시작돼'],
+      phAct:'예: 같은 그림 두 장을 고르면', phRes:'예: 맞으면 카드가 사라져',
+      namePh:'예: 반짝 기억 계단',
+      zones:{top:['제목','레벨','남은 시간','점수','최고 기록'], mid:['카드 판','색깔 버튼 4개','숫자 버튼','시작 버튼','미로'], bot:['점수','다시 하기 버튼','최고 기록','힌트 버튼','응원 한마디']},
+      moods:['신나는','게임기','우주','탐정','네온','미로'],
+      rules:['게임 방법은 한두 줄로 짧게 화면에 보여 줘.','한 판이 1~2분 안에 끝나게 해 줘.'],
+      check:'한 판이 1~2분 안에 끝나고, 져도 다시 하고 싶은 게임이에요',
+      up:['레벨이 올라가면 무엇이 달라지면 좋을까?','둘이 번갈아 하는 모드를 넣으면 어떨까?','틀렸을 때 기분 안 나쁘게 해 주는 한마디는 뭘까?']
+    },
+    friend: {
+      name:'친구를 위한 웹앱', emo:'💌', color:2, kind:'친구를 위한',
+      desc:'친구에게 물어보고, 친구가 원하는 앱을 만들어 줘요',
+      askTitle:'친구에게 이렇게 물어봐',
+      l1:'인터뷰', l2:'요청',
+      q1:'친구 한 명을 정해서 물어보자. 친구는 요즘 뭘 좋아하거나 뭐가 불편하대?',
+      sub1:'내 생각보다 친구의 말이 먼저야. 친구가 한 말을 짧게 받아 적어 봐.',
+      f1:'친구가 말한 것', ph1:'예: 요즘 줄넘기 연습을 해, 공룡을 좋아해',
+      qs1:['“요즘 제일 재밌는 게 뭐야?”','“요즘 새로 시작했거나 연습하는 게 있어?”','“하루 중에 제일 귀찮은 순간은 언제야?”','“요즘 자꾸 까먹거나 헷갈리는 게 있어?”','“이런 앱이 있으면 좋겠다 싶은 거 있어?”','“쉬는 시간이나 집에서 주로 뭐 해?”'],
+      c1:['줄넘기 연습','공룡','그림 그리기','아이돌 노래','축구','강아지','수학 숙제','용돈 모으기','방 정리','책 읽기','요리','피아노 연습'],
+      q2:function(q){ return q + ', 친구 이야기를 더 들어 보자'; },
+      paths:{
+        a:{title:'친구의 불편 해결', desc:'친구가 불편하다고 한 점을 해결해 줘요', ph:'예: 몇 개 했는지 자꾸 까먹는대',
+           label:function(q, raw){ return q + js(raw, '과', '와') + ' 관련해서 친구가 불편하다고 한 점은?'; },
+           qs:['“그게 왜 불편해?” 하고 한 번 더 물어봐.','“언제 제일 불편해?”','“지금은 그걸 어떻게 하고 있어?”','“그게 해결되면 기분이 어떨 것 같아?”'],
+           chips:['자꾸 까먹는대','기록하기 귀찮대','혼자 하면 심심하대','시간이 오래 걸린대','고르기가 어렵대','얼마나 늘었는지 모르겠대'],
+           line:function(s1, s2){ return '친구에게 물어보니 ' + j(s1, '과', '와') + ' 관련해서 이런 점이 불편하대. ' + end(s2); }},
+        b:{title:'친구의 바람 이루기', desc:'친구가 “이런 게 있으면 좋겠다”고 한 걸 만들어요', ph:'예: 하루에 몇 개 했는지 모아 보고 싶대',
+           label:function(q, raw){ return q + js(raw, '과', '와') + ' 관련해서 친구가 바라는 건?'; },
+           qs:['“그게 있으면 뭐가 제일 좋을 것 같아?”','“비슷한 앱을 써 본 적 있어? 뭐가 아쉬웠어?”','“딱 하나만 된다면 뭐가 됐으면 좋겠어?”','“그걸 매일 쓸 것 같아?”'],
+           chips:['기록을 모아 보고 싶대','퀴즈로 연습하고 싶대','캐릭터를 키우고 싶대','매일 응원받고 싶대','랜덤으로 골라 주면 좋겠대','점수 대결을 하고 싶대'],
+           line:function(s1, s2){ return '친구에게 물어보니 ' + j(s1, '과', '와') + ' 관련해서 이런 걸 바란대. ' + end(s2); }}
+      },
+      q3:'내 친구는 누구고, 언제 이 앱을 쓸까?',
+      qs3:['“이 앱을 언제 쓸 것 같아?”','“휴대폰으로 쓸까, 컴퓨터로 쓸까?”','“혼자 쓸래, 다른 친구랑 같이 쓸래?”','“이 앱을 쓰고 나면 뭐가 좋아질 것 같아?”','“이건 꼭 들어갔으면 하는 게 있어?”'],
+      who:['단짝 친구','짝꿍','모둠 친구','같은 반 친구','학원 친구','이웃 친구'],
+      when:['아침에 일어나서','숙제할 때','쉬는 시간','연습 끝나고','잠자기 전','주말'],
+      goal:{label:'친구가 “딱 내가 원하던 거야!” 하려면 꼭 있어야 할 것은?', ph:'예: 친구가 좋아하는 토끼 이모지',
+            chips:['친구가 좋아하는 색','친구가 좋아하는 이모지','친구 별명','친구가 쓰는 말투','큰 버튼','짧고 쉬운 설명'],
+            line:function(g){ return '친구가 꼭 있어야 한다고 한 건 이거야. ' + end(g); }},
+      sub4:'친구가 제일 원한 것 하나만! 친구가 버튼을 누르는 모습을 떠올려 봐.',
+      qs4:['“이 중에서 제일 중요한 하나만 고른다면?”','“버튼을 누르면 뭐가 나오면 좋겠어?”','“다 하고 나면 화면에 뭐가 보이면 기분 좋을까?”','내 생각을 한 문장으로 말하고 “이거 맞아?” 하고 확인해 봐.'],
+      act:['친구가 버튼을 누르면','오늘 한 개수를 넣고 누르면','시작을 누르면','하나를 고르면','오늘 한 일을 적고 누르면'],
+      res:['기록이 차곡차곡 쌓여','응원 한마디가 나와','랜덤으로 하나를 골라 줘','연습 퀴즈가 나와','지난번보다 얼마나 늘었는지 보여 줘','캐릭터가 한 칸 자라'],
+      phAct:'예: 오늘 한 개수를 넣고 누르면', phRes:'예: 기록이 차곡차곡 쌓여',
+      namePh:'예: 깡총 줄넘기 일기',
+      sub5:'친구가 좋아하는 색과 분위기를 물어보고 골라 봐. 휴대폰 그림이 바로 바뀌어.',
+      zones:{top:['제목','친구 별명','오늘 날짜','설명 한 줄'], mid:['큰 버튼','입력칸','기록 목록','캐릭터','고르기 버튼 3개'], bot:['결과','응원 한마디','지난 기록','다시 하기 버튼']},
+      moods:['따뜻한','귀여운','멋진','공룡','우주','바다'],
+      rules:['이 앱은 친구가 원해서 만드는 거야. 친구가 처음 봐도 바로 쓸 수 있게 쉽게 만들어 줘.','친구 진짜 이름 대신 별명을 써 줘.','친구 의견을 듣고 고칠 수 있게, 색과 문구처럼 바꾸기 쉬운 부분은 코드 맨 위에 모아 줘.'],
+      check:'친구에게 원하는 걸 직접 물어보고, 친구 말대로 적었어요',
+      up:['완성한 앱을 친구에게 직접 써 보게 하고 옆에서 지켜봐.','친구에게 “제일 좋은 점 하나, 고치고 싶은 점 하나”를 물어봐.','친구가 어디서 멈칫하거나 헷갈려 하는지 적어 둬.','다 고치면 “이제 원하던 거랑 비슷해?” 하고 다시 물어봐.']
+    },
+    solve: {
+      name:'문제해결', emo:'🛠️', color:3, kind:'문제해결',
+      desc:'생활 속 불편하고 곤란한 일을 해결해요',
+      l1:'문제', l2:'원인',
+      q1:'요즘 우리 주변에서 불편하거나 곤란한 일은 뭐야?',
+      sub1:'교실, 집, 등굣길 어디든 좋아. “이것 때문에 힘들어”를 찾아보자.',
+      f1:'불편한 일', ph1:'예: 준비물을 자꾸 까먹어요',
+      qs1:['이번 주에 “아, 짜증 나!” 한 순간은 언제야?','친구나 가족이 자주 하는 불평은 뭐야?','교실에서 매일 시간이 오래 걸리는 일은?','어른들이 자주 잔소리하는 건 뭐야?'],
+      c1:['준비물을 자꾸 까먹어요','숙제를 자꾸 미뤄요','물을 잘 안 마셔요','용돈이 금방 없어져요','방이 늘 어질러져요','아침에 늦게 일어나요','화분 물 주기를 잊어요','분리수거가 헷갈려요','휴대폰을 너무 오래 봐요','청소 당번이 헷갈려요','발표할 때 떨려요','급식을 자꾸 남겨요'],
+      q2:function(q){ return q + ', 왜 생기는 걸까?'; },
+      paths:{
+        a:{title:'깜빡해서 생겨요', desc:'잊어버리거나 헷갈려서 생기는 문제예요', ph:'예: 전날 밤에 확인을 안 해요',
+           label:function(q, raw){ return q + ', 언제 왜 깜빡하게 될까?'; },
+           qs:['그 일이 마지막으로 있었던 때를 떠올려 봐. 왜 그랬어?','“왜?”를 세 번 물어보면 진짜 원인이 나와.','깜빡하지 않는 사람은 어떻게 하고 있어?'],
+           chips:['전날 밤에 확인을 안 해요','어디 적었는지 몰라요','할 일이 너무 많아요','순서가 헷갈려요','시간을 몰라요','알려 주는 사람이 없어요'],
+           line:function(s1, s2){ return '해결하고 싶은 문제는 이거야. ' + end(s1) + ' 깜빡하거나 헷갈려서 생기는 것 같아. 왜 그런지 생각해 보니 ' + end(s2); }},
+        b:{title:'하기 싫어서 생겨요', desc:'귀찮거나 재미없어서 생기는 문제예요', ph:'예: 얼마나 했는지 안 보여서 재미없어요',
+           label:function(q, raw){ return q + ', 왜 하기 싫어질까?'; },
+           qs:['그 일을 할 때 제일 싫은 1초는 언제야?','“왜?”를 세 번 물어보면 진짜 원인이 나와.','조금이라도 재밌어지려면 뭐가 있으면 될까?'],
+           chips:['너무 귀찮아요','재미가 없어요','얼마나 했는지 안 보여요','혼자 하면 심심해요','해도 칭찬을 못 받아요','너무 오래 걸려요'],
+           line:function(s1, s2){ return '해결하고 싶은 문제는 이거야. ' + end(s1) + ' 귀찮거나 재미없어서 생기는 것 같아. 왜 그런지 생각해 보니 ' + end(s2); }}
+      },
+      q3:'이 문제는 누가, 언제 겪을까?',
+      qs3:['이 문제로 제일 곤란한 사람은 누구야?','문제가 생기기 바로 전, 언제 앱을 열면 막을 수 있을까?','해결됐다는 건 어떻게 알 수 있을까?'],
+      who:['나','우리 반','동생','우리 가족','청소 당번','모둠 친구들'],
+      when:['아침에 집 나서기 전','전날 밤','쉬는 시간','집에 와서','주말 아침','잠자기 전'],
+      goal:{label:'문제가 해결되면 무엇이 달라질까?', ph:'예: 일주일 동안 준비물을 한 번도 안 까먹어요',
+            chips:['하루도 안 빠지고 해요','시간이 반으로 줄어요','다툼이 줄어요','잔소리를 덜 들어요','스스로 할 수 있어요'],
+            line:function(g){ return '이 문제가 해결되면 이렇게 달라질 거야. ' + end(g); }},
+      sub4:'해결 방법은 딱 하나! 원인을 바로 막아 주는 버튼을 떠올려 봐.',
+      qs4:['원인을 막으려면 앱이 무엇을 해 주면 될까?','버튼을 누르면 문제가 어떻게 줄어들까?','종이와 연필로 하던 방법을 앱으로 바꾸면 어떨까?'],
+      act:['체크 버튼을 누르면','할 일을 적고 누르면','시작을 누르면','오늘 한 걸 고르면','챙긴 준비물을 체크하면'],
+      res:['남은 할 일이 보여','다 하면 칭찬 도장이 찍혀','타이머가 끝나면 알려 줘','며칠 연속으로 했는지 보여 줘','빠진 게 있으면 빨갛게 표시돼','오늘의 당번을 알려 줘'],
+      phAct:'예: 챙긴 준비물을 체크하면', phRes:'예: 빠진 게 있으면 빨갛게 표시돼',
+      namePh:'예: 준비물 출동',
+      zones:{top:['제목','오늘 날짜','남은 할 일 수','연속 기록'], mid:['체크리스트','입력칸','큰 버튼','타이머','당번표'], bot:['칭찬 도장','지난 기록','다시 하기 버튼','응원 한마디']},
+      moods:['깔끔한','차분한','상쾌한','귀여운','숲속','바다'],
+      rules:['어린이가 매일 쉽게 쓸 수 있도록 단계는 짧고 단순하게 해 줘.','체크하거나 기록한 내용은 브라우저에 저장해서 다음에 열어도 남아 있게 해 줘.'],
+      check:'이 앱이 문제의 원인을 정말 줄여 주는지 한 번 더 생각했어요',
+      up:['일주일 동안 써 보고, 문제가 정말 줄었는지 세어 볼까?','써 본 사람에게 “아직 불편한 점”을 물어보면?','원인이 하나 더 있다면, 그걸 막는 기능은 뭘까?']
+    }
+  };
+  var CAT_ORDER = ['study', 'brain', 'friend', 'solve'];
   var EXAMPLES = [
-    {s1:'축구', path:'fix', s2:'편 가를 때 맨날 싸워요', who:'우리 반 친구들', when:'점심시간',
-     act:'친구 별명을 넣고 버튼을 누르면', result:'두 팀으로 공평하게 랜덤으로 나눠져',
-     name:'공평 팀 나누기', colors:['green'], mood:'신나는', top:'제목', mid:'친구 별명 입력칸, 큰 버튼', bot:'A팀과 B팀 결과'},
-    {s1:'강아지', path:'fun', s2:'강아지 퀴즈가 있으면 재밌을 것 같아요', who:'동생', when:'심심할 때',
-     act:'보기 중에서 답을 고르면', result:'강아지가 맞았는지 알려 줘',
-     name:'멍멍 퀴즈', colors:['yellow','brown'], mood:'귀여운', top:'문제', mid:'보기 버튼 3개', bot:'강아지 그림, 점수'}
+    {cat:'study', s1:'세계 나라와 수도', path:'b', s2:'카드 뒤집기 놀이로 만들면 좋겠어요', who:'짝꿍', when:'쉬는 시간',
+     goal:'나라 이름을 보면 수도가 바로 떠올라요', act:'나라 카드를 톡 치면', result:'카드가 뒤집혀 수도가 보여',
+     name:'수도 뒤집기', colors:['sky','green'], mood:'차분한', top:'제목, 맞힌 개수', mid:'뒤집는 카드', bot:'알았어 버튼, 몰랐어 버튼'},
+    {cat:'brain', s1:'순서 기억하기', path:'b', s2:'맞힐수록 순서가 길어져요', who:'우리 가족', when:'저녁 먹고 나서',
+     goal:'기억력', act:'색깔 버튼이 깜빡인 순서대로 누르면', result:'순서가 하나 더 길어져',
+     name:'반짝 기억 계단', colors:['purple','yellow'], mood:'게임기', top:'레벨, 최고 기록', mid:'색깔 버튼 4개', bot:'시작 버튼'},
+    {cat:'friend', s1:'줄넘기 연습', path:'b', s2:'하루에 몇 개 했는지 모아 보고 싶대', who:'단짝 친구', when:'연습 끝나고',
+     goal:'친구가 좋아하는 토끼 이모지', act:'오늘 넘은 개수를 넣고 누르면', result:'달력에 기록이 차곡차곡 쌓여',
+     name:'깡총 줄넘기 일기', colors:['pink','sky'], mood:'귀여운', top:'제목, 친구 별명', mid:'개수 입력칸, 큰 버튼', bot:'지난 기록'},
+    {cat:'solve', s1:'준비물을 자꾸 까먹어요', path:'a', s2:'전날 밤에 확인을 안 해요', who:'나', when:'전날 밤',
+     goal:'일주일 동안 준비물을 한 번도 안 까먹어요', act:'챙긴 준비물을 체크하면', result:'빠진 게 있으면 빨갛게 표시돼',
+     name:'준비물 출동', colors:['green','orange'], mood:'상쾌한', top:'제목, 오늘 날짜', mid:'체크리스트', bot:'칭찬 도장'}
   ];
-  var ZONE_CHIPS = {
-    top:['제목','점수','타이머','설명 한 줄','그림'],
-    mid:['큰 버튼','입력칸','보기 버튼 3개','그림','결과'],
-    bot:['결과','점수','다시 하기 버튼','응원 한마디','그림']
-  };
-  var DICE = {
-    who:['나','동생','부모님','반려동물','우리 반','선생님','친구'],
-    when:['아침','쉬는 시간','숙제할 때','심심할 때','생일','비 오는 날','잠자기 전'],
-    form:['뽑기','퀴즈','타이머','기록장','테스트','미니게임']
-  };
+  function cat(st){ return CATS[(st || state).cat] || null; }
+  function labels(){ var c = cat(); return ['', c ? c.l1 : '고르기', (c && c.l2) || '방향', '누가', '딱 하나', '그려봐']; }
+  function tagFor(i){ var c = cat(); return c.emo + ' ' + c.name + ' · ' + i + '계단 ' + labels()[i]; }
   var FIXES = [
     '버튼을 눌러도 아무 일도 안 일어나. 고쳐 줘.',
     '글씨가 너무 작아. 더 크게 해 줘.',
@@ -357,7 +525,7 @@ textarea.inp{resize:vertical; min-height:92px}
   }
   function whenP(w){
     w = t(w); if(!w) return '';
-    return /(때|에)$/.test(w) ? w : w + '에';
+    return /(때|에|서|고|면)$/.test(w) ? w : w + '에';
   }
   function end(s){
     s = t(s); if(!s) return '';
@@ -366,27 +534,32 @@ textarea.inp{resize:vertical; min-height:92px}
 
   function valid(i, st){
     st = st || state;
+    if(!cat(st)) return false;
     if(i === 1) return !!t(st.s1);
-    if(i === 2) return !!st.path && !!t(st.s2);
+    if(i === 2) return (st.path === 'a' || st.path === 'b') && !!t(st.s2);
     if(i === 3) return !!t(st.who) && !!t(st.when);
     if(i === 4) return !!t(st.act) && !!t(st.result);
     if(i === 5) return !!t(st.name);
     return false;
   }
-  function firstOpen(){ for(var i = 1; i <= 5; i++){ if(!valid(i)) return i; } return 'result'; }
-  function hasAny(){ return ['s1','s2','who','when','act','result','name'].some(function(k){ return t(state[k]); }); }
+  function firstOpen(){
+    if(!cat()) return 'intro';
+    for(var i = 1; i <= 5; i++){ if(!valid(i)) return i; }
+    return 'result';
+  }
+  function hasAny(){ return ['s1','s2','who','when','goal','act','result','name'].some(function(k){ return t(state[k]); }); }
 
   function buildPrompt(st){
+    var c = cat(st);
+    if(!c) return '';
     var L = [];
     L.push('나는 초등학교 5학년이야.');
     var nm = t(st.name) || '내 앱';
     var wp = whenP(st.when);
-    L.push(subj(st.who) + ' ' + (wp ? wp + ' ' : '') + '쓰는 "' + nm + '" 웹앱을 만들고 싶어.');
-    if(t(st.s1)){
-      var base = j(st.s1, '과', '와') + ' 관련해서 ';
-      if(st.path === 'fun') L.push((base + '더 재밌는 걸 만들고 싶어. ' + end(st.s2)).trim());
-      else L.push((base + '아쉬운 점이 있었어. ' + end(st.s2)).trim());
-    }
+    L.push(subj(st.who) + ' ' + (wp ? wp + ' ' : '') + '쓰는 ' + c.kind + ' 웹앱 "' + nm + '"' + js(nm, '을', '를') + ' 만들고 싶어.');
+    var p = c.paths[st.path];
+    if(t(st.s1) && p) L.push(p.line(st.s1, st.s2).trim());
+    if(t(st.goal)) L.push(c.goal.line(st.goal));
     if(t(st.act) || t(st.result)){
       L.push('핵심 기능은 딱 하나야. ' + [t(st.act), end(st.result)].filter(Boolean).join(' '));
     }
@@ -400,6 +573,7 @@ textarea.inp{resize:vertical; min-height:92px}
     if(cn.length && mood) L.push(cn.join('과 ') + '을 쓰고, ' + mood + ' 느낌으로 꾸며 줘.');
     else if(cn.length) L.push(cn.join('과 ') + '을 써서 꾸며 줘.');
     else if(mood) L.push(mood + ' 느낌으로 꾸며 줘.');
+    c.rules.forEach(function(r){ L.push(r); });
     L.push('글씨와 버튼은 크게, 휴대폰에서도 잘 보이게 해 줘.');
     L.push('그림 파일 대신 이모지나 도형으로 그려 줘.');
     L.push('HTML 파일 하나로 만들어 줘.');
@@ -437,6 +611,7 @@ textarea.inp{resize:vertical; min-height:92px}
     var cur = typeof view === 'number' ? view : null;
     var fo = firstOpen();
     var foN = fo === 'result' ? 6 : fo;
+    var LABELS = labels();
     var h = '';
     for(var i = 1; i <= 5; i++){
       var done = valid(i);
@@ -457,7 +632,7 @@ textarea.inp{resize:vertical; min-height:92px}
     var h = '<div class="helper">' +
       '<button type="button" class="helper-toggle" data-act="helper" data-i="' + i + '" aria-expanded="' + ho + '">' + (ho ? '도움 접기' : '막히면 눌러 봐') + '</button>' +
       '<div class="helper-body" id="hb' + i + '"' + (ho ? '' : ' hidden') + '>' +
-      '<p class="helper-title">선생님이 물어본다면</p>' +
+      '<p class="helper-title">' + esc((cat() && cat().askTitle) || '선생님이 물어본다면') + '</p>' +
       '<ul class="hand">' + qs.map(function(q){ return '<li>' + esc(q) + '</li>'; }).join('') + '</ul>';
     if(groups){
       h += '<button type="button" class="more" data-act="chips" data-i="' + i + '" aria-expanded="' + co + '">' + (co ? '고르기 접기' : '그래도 모르겠으면 골라 보기') + '</button>' +
@@ -485,27 +660,33 @@ textarea.inp{resize:vertical; min-height:92px}
   /* ---------- 화면들 ---------- */
   function introHTML(){
     var route = [
-      ['좋아', '내가 좋아하는 것 찾기'],
-      ['아쉬워 / 더 재밌게', '고칠 점이나 더할 재미 찾기'],
+      ['고르기', '무엇을 도울지 고르기'],
+      ['방향', '어떤 쪽으로 키울지 정하기'],
       ['누가', '누가, 언제 쓸지 정하기'],
       ['딱 하나', '버튼 하나로 일어날 일 정하기'],
       ['그려봐', '화면을 그리고 이름 짓기']
     ];
+    var c = cat(), resume = hasAny() && c;
     var h = cardOpen(1, '시작');
     h += '<h1 id="head" tabindex="-1">뭘 만들지 모르겠다면,<br>한 계단씩 올라가 보자</h1>';
-    h += '<p class="lead">질문 다섯 개에 답하면 AI에게 보낼 <b>내 앱 주문서(프롬프트)</b>가 완성돼. 정답은 없어. 떠오르는 대로 짧게 써도 괜찮아.</p>';
+    h += '<p class="lead">먼저 만들 앱의 종류를 고르고, 질문 다섯 개에 답하면 AI에게 보낼 <b>내 앱 주문서(프롬프트)</b>가 완성돼. 정답은 없어. 떠오르는 대로 짧게 써도 괜찮아.</p>';
+    if(resume){
+      h += '<div class="row"><button type="button" class="btn primary" data-act="resume">이어서 오르기<small>' + esc(c.emo + ' ' + c.name) + '</small></button><button type="button" class="btn ghost" data-act="fresh">같은 종류로 새로 시작</button></div>' +
+        '<p class="sub small">같은 컴퓨터를 쓴 앞 친구의 기록일 수도 있어. 내 것이 아니면 새로 시작하거나 아래에서 다른 종류를 골라 줘.</p>';
+    }
+    h += '<p class="fl big">어떤 앱을 만들어 볼까?</p>' +
+      '<div class="paths cats" role="group" aria-label="앱 종류 고르기">' + CAT_ORDER.map(function(k){
+        var x = CATS[k];
+        return '<button type="button" class="path" data-cat="' + k + '" aria-pressed="' + (state.cat === k) + '" style="--c:var(--s' + x.color + ');--c-soft:var(--s' + x.color + '-soft)">' +
+          '<span class="emo" aria-hidden="true">' + x.emo + '</span><b>' + esc(x.name) + '</b><span>' + esc(x.desc) + '</span></button>';
+      }).join('') + '</div>';
+    if(resume) h += '<p class="sub small">다른 종류를 고르면 지금까지 쓴 답은 지워지고 새로 시작해.</p>';
     h += '<ol class="route">' + route.map(function(r, ix){
       return '<li style="--rc:var(--s' + (ix + 1) + ')"><span class="n">' + (ix + 1) + '</span><span><b>' + r[0] + '</b><span>' + r[1] + '</span></span></li>';
     }).join('') + '</ol>';
-    if(hasAny()){
-      h += '<div class="row"><button type="button" class="btn primary" data-act="resume">이어서 오르기</button><button type="button" class="btn ghost" data-act="fresh">새로 시작</button></div>' +
-        '<p class="sub small">같은 컴퓨터를 쓴 앞 친구의 기록일 수도 있어. 내 것이 아니면 ‘새로 시작’을 눌러 줘.</p>';
-    } else {
-      h += '<div class="row"><button type="button" class="btn primary" data-act="fresh">계단 오르기 시작</button></div>';
-    }
     h += '<div class="demo"><p class="group-lbl">혼자서 생각하기 어려울 때 힌트</p><p class="sub small">눌러 보면 예시 답이 채워져. 살펴본 다음 내 생각으로 바꿔 써 봐.</p><div class="row">' +
       EXAMPLES.map(function(e, ix){
-        return '<button type="button" class="btn ghost small" data-act="demo" data-ex="' + ix + '">' + esc(e.name) + '<small>' + (e.path === 'fix' ? '아쉬운 점 고치기' : '더 재밌게') + '</small></button>';
+        return '<button type="button" class="btn ghost small" data-act="demo" data-ex="' + ix + '">' + esc(e.name) + '<small>' + esc(CATS[e.cat].name) + '</small></button>';
       }).join('') + '</div></div>';
     h += '<figure class="sample"><figcaption class="group-lbl">이렇게 완성돼 (예시)</figcaption><pre>' + esc(buildPrompt(EXAMPLES[0])) + '</pre></figure>';
     return h + '</section>';
@@ -518,69 +699,72 @@ textarea.inp{resize:vertical; min-height:92px}
       '<p class="dice-out" id="diceOut" aria-live="polite" hidden></p>' +
       '<div class="row" id="diceRow" hidden><button type="button" class="btn ghost small" data-act="diceuse">이걸로 할래</button><span class="sub small">엉뚱해도 괜찮아. 마음에 안 들면 다시 굴려!</span></div>' +
       '</div>';
-    return cardOpen(1, '1계단 · ' + TAGS[1]) +
-      '<h2 class="q" id="head" tabindex="-1">요즘 시간 가는 줄 모르는 건 뭐야?</h2>' +
-      '<p class="sub">좋아하는 것, 자주 하는 것, 보기만 해도 신나는 것 아무거나 좋아.</p>' +
-      '<div class="field"><label class="fl" for="f-s1">내가 좋아하는 것</label>' +
-      '<input class="inp" id="f-s1" data-f="s1" type="text" autocomplete="off" placeholder="예: 축구, 강아지, 그림 그리기" value="' + esc(state.s1) + '"></div>' +
-      helperHTML(1, ['주말에 주로 뭐 해?', '유튜브에서 뭐 자주 봐?', '쉬는 시간에 친구랑 뭐 하고 놀아?'],
-        [{field:'s1', items:['축구','게임','강아지','고양이','그림 그리기','요리','노래·춤','줄넘기','레고','책 읽기','동생이랑 놀기','과자']}], dice) +
+    var c = cat();
+    return cardOpen(1, tagFor(1)) +
+      '<h2 class="q" id="head" tabindex="-1">' + esc(c.q1) + '</h2>' +
+      '<p class="sub">' + esc(c.sub1) + '</p>' +
+      '<div class="field"><label class="fl" for="f-s1">' + esc(c.f1) + '</label>' +
+      '<input class="inp" id="f-s1" data-f="s1" type="text" autocomplete="off" placeholder="' + esc(c.ph1) + '" value="' + esc(state.s1) + '"></div>' +
+      helperHTML(1, c.qs1, [{field:'s1', items:c.c1}], dice) +
       navHTML(1) + '</section>';
   }
 
   function step2(){
-    var raw = t(state.s1) || '좋아하는 것';
-    var q = t(state.s1) ? '‘' + esc(raw) + '’' : '좋아하는 것';
-    var h = cardOpen(2, '2계단 · ' + TAGS[2]) +
-      '<h2 class="q" id="head" tabindex="-1">' + q + ', 어느 쪽으로 올라가 볼까?</h2>' +
+    var c = cat();
+    var raw = t(state.s1) || c.l1;
+    var q = '‘' + esc(raw) + '’';
+    var h = cardOpen(2, tagFor(2)) +
+      '<h2 class="q" id="head" tabindex="-1">' + (c.q2 ? c.q2(q) : q + ', 어느 쪽으로 올라가 볼까?') + '</h2>' +
       '<div class="paths" role="group" aria-label="길 고르기">' +
-      '<button type="button" class="path" data-path="fix" aria-pressed="' + (state.path === 'fix') + '"><b>아쉬운 점 고치기</b><span>귀찮거나 속상한 순간을 해결해요</span></button>' +
-      '<button type="button" class="path" data-path="fun" aria-pressed="' + (state.path === 'fun') + '"><b>더 재밌게 만들기</b><span>지금보다 재미를 하나 더 얹어요</span></button>' +
+      ['a', 'b'].map(function(k){
+        var p = c.paths[k];
+        return '<button type="button" class="path" data-path="' + k + '" aria-pressed="' + (state.path === k) + '"><b>' + esc(p.title) + '</b><span>' + esc(p.desc) + '</span></button>';
+      }).join('') +
       '</div>';
-    if(state.path){
-      var fix = state.path === 'fix';
-      var label = fix
-        ? q + js(raw, '과', '와') + ' 관련해서 귀찮거나 속상했던 순간은?'
-        : q + js(raw, '과', '와') + ' 관련해서 뭐가 있으면 더 재밌을까?';
-      h += '<div class="field"><label class="fl big" for="f-s2">' + label + '</label>' +
-        '<textarea class="inp" id="f-s2" data-f="s2" rows="2" placeholder="' + (fix ? '예: 편 가를 때 맨날 싸워요' : '예: 퀴즈로 만들면 재밌을 것 같아요') + '">' + esc(state.s2) + '</textarea></div>';
-      h += fix
-        ? helperHTML(2, ['그거 하다가 누가 자주 투덜대?', '시간이 오래 걸리거나 자꾸 까먹는 건 없어?', '친구랑 다투거나 헷갈리는 순간은?'],
-            [{field:'s2', items:['편 가를 때 싸워요','자꾸 까먹어요','기록하기 귀찮아요','고르기가 어려워요','순서 정할 때 다퉈요','혼자 하면 심심해요']}])
-        : helperHTML(2, ['깜짝 놀라는 게 생기면 어떨까?', '점수나 레벨이 있으면 어떨까?', '친구랑 같이 하면 뭐가 재밌을까?'],
-            [{field:'s2', items:['퀴즈로 만들면 좋겠어요','랜덤 뽑기가 있으면 좋겠어요','점수 대결을 하고 싶어요','캐릭터를 키우고 싶어요','타이머로 도전하고 싶어요','깜짝 소리가 나면 좋겠어요']}]);
+    var p = c.paths[state.path];
+    if(p){
+      h += '<div class="field"><label class="fl big" for="f-s2">' + p.label(q, raw) + '</label>' +
+        '<textarea class="inp" id="f-s2" data-f="s2" rows="2" placeholder="' + esc(p.ph) + '">' + esc(state.s2) + '</textarea></div>';
+      h += helperHTML(2, p.qs, [{field:'s2', items:p.chips}]);
     }
     return h + navHTML(2) + '</section>';
   }
 
   function step3(){
-    return cardOpen(3, '3계단 · ' + TAGS[3]) +
-      '<h2 class="q" id="head" tabindex="-1">이 앱은 누가, 언제 쓸까?</h2>' +
+    var c = cat();
+    return cardOpen(3, tagFor(3)) +
+      '<h2 class="q" id="head" tabindex="-1">' + esc(c.q3 || '이 앱은 누가, 언제 쓸까?') + '</h2>' +
       '<p class="sub">쓰는 사람이 정해지면 앱 모양도 정해져.</p>' +
       '<div class="two">' +
-      '<div class="field"><label class="fl" for="f-who">누가 쓸까?</label><input class="inp" id="f-who" data-f="who" type="text" autocomplete="off" placeholder="예: 우리 반 친구들" value="' + esc(state.who) + '"></div>' +
-      '<div class="field"><label class="fl" for="f-when">언제 쓸까?</label><input class="inp" id="f-when" data-f="when" type="text" autocomplete="off" placeholder="예: 점심시간" value="' + esc(state.when) + '"></div>' +
+      '<div class="field"><label class="fl" for="f-who">누가 쓸까?</label><input class="inp" id="f-who" data-f="who" type="text" autocomplete="off" placeholder="예: ' + esc(c.who[1]) + '" value="' + esc(state.who) + '"></div>' +
+      '<div class="field"><label class="fl" for="f-when">언제 쓸까?</label><input class="inp" id="f-when" data-f="when" type="text" autocomplete="off" placeholder="예: ' + esc(c.when[0]) + '" value="' + esc(state.when) + '"></div>' +
       '</div>' +
-      helperHTML(3, ['너 혼자 쓸까? 친구랑? 가족이랑?', '하루 중 언제 이 앱을 열게 될까?', '다 쓰고 나서 그 사람 기분이 어떠면 좋겠어?'], [
-        {label:'누가', field:'who', items:['나','친구들','우리 반','동생','부모님','우리 가족','선생님']},
-        {label:'언제', field:'when', items:['쉬는 시간','점심시간','아침','숙제할 때','심심할 때','주말','잠자기 전']}
+      helperHTML(3, c.qs3, [
+        {label:'누가', field:'who', items:c.who},
+        {label:'언제', field:'when', items:c.when}
       ]) +
+      '<div class="field"><label class="fl" for="f-goal">한 걸음 더: ' + esc(c.goal.label) + ' <span class="sub small">(안 써도 다음 계단으로 갈 수 있어)</span></label>' +
+      '<input class="inp" id="f-goal" data-f="goal" type="text" autocomplete="off" placeholder="' + esc(c.goal.ph) + '" value="' + esc(state.goal) + '">' +
+      '<div class="chips">' + c.goal.chips.map(function(g){
+        return '<button type="button" class="chip sm" data-chip="' + esc(g) + '" data-f="goal" data-mode="set">' + esc(g) + '</button>';
+      }).join('') + '</div></div>' +
       navHTML(3) + '</section>';
   }
 
   function step4(){
-    return cardOpen(4, '4계단 · ' + TAGS[4]) +
+    var c = cat();
+    return cardOpen(4, tagFor(4)) +
       '<h2 class="q" id="head" tabindex="-1">버튼 하나 누르면 무슨 일이 일어나?</h2>' +
-      '<p class="sub">기능은 딱 하나! 제일 중요한 것만 남기자.</p>' +
+      '<p class="sub">' + esc(c.sub4) + '</p>' +
       '<div class="builder">' +
-      '<div class="field"><label class="fl" for="f-act">이렇게 하면</label><input class="inp" id="f-act" data-f="act" type="text" autocomplete="off" placeholder="예: 버튼을 누르면" value="' + esc(state.act) + '"></div>' +
+      '<div class="field"><label class="fl" for="f-act">이렇게 하면</label><input class="inp" id="f-act" data-f="act" type="text" autocomplete="off" placeholder="' + esc(c.phAct) + '" value="' + esc(state.act) + '"></div>' +
       '<span class="arrow" aria-hidden="true">→</span>' +
-      '<div class="field"><label class="fl" for="f-result">이런 일이 일어나</label><textarea class="inp" id="f-result" data-f="result" rows="2" placeholder="예: 두 팀으로 랜덤으로 나눠져">' + esc(state.result) + '</textarea></div>' +
+      '<div class="field"><label class="fl" for="f-result">이런 일이 일어나</label><textarea class="inp" id="f-result" data-f="result" rows="2" placeholder="' + esc(c.phRes) + '">' + esc(state.result) + '</textarea></div>' +
       '</div>' +
       '<div class="live" id="live4" aria-live="polite">' + check4() + '</div>' +
-      helperHTML(4, ['제일 중요한 것 하나만 남긴다면 뭐야?', '그걸 할 때 제일 재밌는 1초는 언제야?', '친구에게 한 문장으로 설명해 볼래?'], [
-        {label:'이렇게 하면', field:'act', items:['버튼을 누르면','이름을 넣고 누르면','답을 고르면','시작을 누르면','화면을 톡 치면']},
-        {label:'이런 일이 일어나', field:'result', items:['랜덤으로 하나가 뽑혀','정답인지 알려 줘','점수가 1점 올라가','시간이 줄어들기 시작해','칭찬 한마디가 나와','그림이 바뀌어']}
+      helperHTML(4, c.qs4, [
+        {label:'이렇게 하면', field:'act', items:c.act},
+        {label:'이런 일이 일어나', field:'result', items:c.res}
       ]) +
       navHTML(4) + '</section>';
   }
@@ -601,28 +785,30 @@ textarea.inp{resize:vertical; min-height:92px}
   }
 
   function step5(){
-    var zoneField = function(k, label, ph){
+    var cc = cat();
+    var zoneField = function(k, label){
+      var ph = '예: ' + cc.zones[k].slice(0, k === 'mid' ? 2 : 1).join(', ');
       return '<div class="zone"><label class="fl" for="f-' + k + '">' + label + '</label>' +
-        '<input class="inp" id="f-' + k + '" data-f="' + k + '" type="text" autocomplete="off" placeholder="' + ph + '" value="' + esc(state[k]) + '">' +
-        '<div class="chips">' + ZONE_CHIPS[k].map(function(c){
+        '<input class="inp" id="f-' + k + '" data-f="' + k + '" type="text" autocomplete="off" placeholder="' + esc(ph) + '" value="' + esc(state[k]) + '">' +
+        '<div class="chips">' + cc.zones[k].map(function(c){
           return '<button type="button" class="chip sm" data-chip="' + esc(c) + '" data-f="' + k + '" data-mode="append">+ ' + esc(c) + '</button>';
         }).join('') + '</div></div>';
     };
-    return cardOpen(5, '5계단 · ' + TAGS[5]) +
+    return cardOpen(5, tagFor(5)) +
       '<h2 class="q" id="head" tabindex="-1">화면에 뭐가 보여?</h2>' +
-      '<p class="sub">칸마다 들어갈 것을 써 봐. 휴대폰 그림이 바로 바뀌어.</p>' +
+      '<p class="sub">' + esc(cc.sub5 || '칸마다 들어갈 것을 써 봐. 휴대폰 그림이 바로 바뀌어.') + '</p>' +
       '<div class="draw"><div class="form">' +
-      '<div class="field"><label class="fl" for="f-name">앱 이름</label><input class="inp" id="f-name" data-f="name" type="text" autocomplete="off" placeholder="예: 공평 팀 나누기" value="' + esc(state.name) + '"></div>' +
+      '<div class="field"><label class="fl" for="f-name">앱 이름</label><input class="inp" id="f-name" data-f="name" type="text" autocomplete="off" placeholder="' + esc(cc.namePh) + '" value="' + esc(state.name) + '"></div>' +
       '<div class="live" id="live5" aria-live="polite">' + checkIP() + '</div>' +
-      zoneField('top', '위에는', '예: 제목') +
-      zoneField('mid', '가운데에는', '예: 이름 입력칸, 큰 버튼') +
-      zoneField('bot', '아래에는', '예: 결과') +
+      zoneField('top', '위에는') +
+      zoneField('mid', '가운데에는') +
+      zoneField('bot', '아래에는') +
       '<div class="field"><span class="fl" id="lbl-color">색 (2개까지)</span><div class="swatches" role="group" aria-labelledby="lbl-color">' +
       COLORS.map(function(c){
         return '<button type="button" class="sw" data-color="' + c.id + '" aria-pressed="' + (state.colors.indexOf(c.id) > -1) + '"><span class="sw-dot" style="background:' + c.hex + '"></span><span class="sw-lbl">' + c.label + '</span></button>';
       }).join('') + '</div></div>' +
       '<div class="field"><label class="fl" for="f-mood">분위기</label><input class="inp" id="f-mood" data-f="mood" type="text" autocomplete="off" placeholder="예: 신나는" value="' + esc(state.mood) + '">' +
-      '<div class="chips">' + ['귀여운','신나는','멋진','차분한','우주','바다','숲속','게임기','사탕'].map(function(m){
+      '<div class="chips">' + cc.moods.map(function(m){
         return '<button type="button" class="chip sm" data-chip="' + m + '" data-f="mood" data-mode="set">' + m + '</button>';
       }).join('') + '</div></div>' +
       '</div><div class="phone-wrap" id="phone">' + phoneInner() + '</div></div>' +
@@ -636,10 +822,11 @@ textarea.inp{resize:vertical; min-height:92px}
     if(hard) warn += note('info', '어려운 신호', '‘' + hard[0] + '’ 같은 건 HTML 파일 하나로 만들기 어려워. AI에게 “가짜 데이터로 흉내 내 줘”라고 덧붙여 보자.');
     warn += checkIP();
 
+    var c = cat();
     var rows = [
-      [1, '좋아', t(state.s1)],
-      [2, state.path === 'fun' ? '더 재밌게' : '아쉬워', t(state.s2)],
-      [3, '누가', [t(state.who), t(state.when)].filter(Boolean).join(' · ')],
+      [1, c.l1, t(state.s1)],
+      [2, c.paths[state.path].title, t(state.s2)],
+      [3, '누가', [t(state.who), t(state.when), t(state.goal)].filter(Boolean).join(' · ')],
       [4, '딱 하나', [t(state.act), t(state.result)].filter(Boolean).join(' → ')],
       [5, '그려봐', t(state.name)]
     ];
@@ -649,7 +836,7 @@ textarea.inp{resize:vertical; min-height:92px}
         '<div class="row"><button type="button" class="btn ghost small" data-act="savetxt">텍스트 파일로 저장</button><button type="button" class="btn ghost small" data-act="print">인쇄하기</button></div>'
       : '';
 
-    var h = cardOpen(5, '꼭대기 도착') +
+    var h = cardOpen(5, c.emo + ' ' + c.name + ' · 꼭대기 도착') +
       '<h2 class="q" id="head" tabindex="-1">내 앱 주문서 완성!</h2>' +
       '<p class="sub no-print">주문서를 복사해서 AI 채팅창에 붙여 넣어 봐. 고치고 싶은 곳은 여기서 바로 고쳐도 돼.</p>' +
       '<label class="visually-hidden" for="f-prompt">AI에게 보낼 주문서</label>' +
@@ -659,7 +846,7 @@ textarea.inp{resize:vertical; min-height:92px}
       saveRow +
       (warn ? '<div class="live">' + warn + '</div>' : '') +
       '<div class="sec no-print"><h3>보내기 전에 체크</h3><div class="checks">' +
-      ['친구의 진짜 이름이나 사진을 넣지 않았어요', '만화·게임 캐릭터 대신 내가 만든 이름과 캐릭터를 써요', '쓰는 사람 기분이 좋아지는 앱이에요'].map(function(c, ix){
+      ['친구의 진짜 이름이나 사진을 넣지 않았어요', '만화·게임 캐릭터 대신 내가 만든 이름과 캐릭터를 써요', c.check].map(function(c, ix){
         return '<label for="chk' + ix + '"><input type="checkbox" id="chk' + ix + '" class="chk"><span>' + c + '</span></label>';
       }).join('') + '</div><div class="live" id="ready" aria-live="polite"></div></div>' +
       '<div class="sec no-print"><h3>AI가 이상하게 만들었다면? 이렇게 말해 봐</h3>' +
@@ -673,7 +860,7 @@ textarea.inp{resize:vertical; min-height:92px}
           '<button type="button" class="fix" data-go="' + r[0] + '">고치기</button></li>';
       }).join('') + '</ol></div>' +
       '<div class="sec"><h3>다 만든 다음엔 한 계단 더</h3><ul class="up">' +
-      '<li>친구한테 보여주면 뭐라고 할까?</li><li>딱 하나만 더 넣는다면 뭘 넣을까?</li><li>누르면 깜짝 놀랄 만한 건 뭘까? (소리, 움직임, 반짝임)</li></ul>' +
+      c.up.map(function(u){ return '<li>' + esc(u) + '</li>'; }).join('') + '</ul>' +
       '<p class="say">AI에게 이렇게 말해 봐: “여기에 ___ 기능을 딱 하나만 더 넣어 줘.”</p></div>' +
       '<div class="nav"><button type="button" class="btn ghost" data-go="5">← 그려봐로 돌아가기</button><button type="button" class="btn ghost" data-act="reset">처음부터 다시</button></div>';
     return h + '</section>';
@@ -689,6 +876,7 @@ textarea.inp{resize:vertical; min-height:92px}
     screenEl.innerHTML = html;
   }
   function go(target){
+    if(target !== 'intro' && !cat()) target = 'intro';
     view = target;
     resetArmed = false;
     render();
@@ -789,9 +977,14 @@ textarea.inp{resize:vertical; min-height:92px}
   }
 
   document.addEventListener('click', function(e){
-    var el = e.target.closest('[data-color],[data-chip],[data-path],[data-act],[data-go]');
+    var el = e.target.closest('[data-color],[data-chip],[data-path],[data-cat],[data-act],[data-go]');
     if(!el) return;
 
+    if(el.dataset.cat){
+      if(hasAny() && state.cat === el.dataset.cat){ go(firstOpen()); return; }
+      state = clone(BLANK); state.cat = el.dataset.cat; open = {helper:{}, chips:{}}; save(); go(1);
+      return;
+    }
     if(el.dataset.color){
       var id = el.dataset.color, ix = state.colors.indexOf(id);
       if(ix > -1) state.colors.splice(ix, 1);
@@ -838,15 +1031,16 @@ textarea.inp{resize:vertical; min-height:92px}
       el.setAttribute('aria-expanded', String(!pk.hidden));
       el.textContent = pk.hidden ? '그래도 모르겠으면 골라 보기' : '고르기 접기';
     } else if(act === 'dice'){
-      lastDice = {who:pick(DICE.who), when:pick(DICE.when), form:pick(DICE.form)};
+      var dc = cat();
+      lastDice = {topic:pick(dc.c1), who:pick(dc.who), when:pick(dc.when)};
       var out = document.getElementById('diceOut');
-      out.textContent = j(lastDice.who, '을', '를') + ' 위한, ' + whenP(lastDice.when) + ' 쓰는 ' + lastDice.form + ' 앱';
+      out.textContent = '‘' + lastDice.topic + '’ · ' + j(lastDice.who, '을', '를') + ' 위해, ' + whenP(lastDice.when);
       out.hidden = false;
       document.getElementById('diceRow').hidden = false;
       el.textContent = '다시 굴리기';
     } else if(act === 'diceuse'){
       if(!lastDice) return;
-      state.s1 = j(lastDice.who, '을', '를') + ' 위한 ' + lastDice.form;
+      state.s1 = lastDice.topic;
       if(!t(state.who)) state.who = lastDice.who;
       if(!t(state.when)) state.when = lastDice.when;
       save();
@@ -856,7 +1050,8 @@ textarea.inp{resize:vertical; min-height:92px}
     } else if(act === 'next') next();
     else if(act === 'prev') prev();
     else if(act === 'fresh'){
-      state = clone(BLANK); open = {helper:{}, chips:{}}; save(); go(1);
+      var keep = state.cat;
+      state = clone(BLANK); state.cat = keep; open = {helper:{}, chips:{}}; save(); go(1);
     } else if(act === 'resume') go(firstOpen());
     else if(act === 'demo'){
       state = Object.assign(clone(BLANK), clone(EXAMPLES[Number(el.dataset.ex)])); open = {helper:{}, chips:{}}; save(); go(1);
