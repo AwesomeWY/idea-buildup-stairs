@@ -146,8 +146,6 @@ textarea.inp{resize:vertical; min-height:92px}
 .path .emo{font-size:30px; line-height:1.2}
 .chip[aria-pressed="true"]{border-color:var(--c); background:var(--c-soft); font-weight:700}
 .lv-desc{margin:0; font-size:15px; color:var(--ink-soft)}
-.prompt-wrap{display:flex; flex-direction:column-reverse; gap:6px}
-.copy-ico{align-self:flex-end; display:inline-flex; align-items:center; gap:6px; font:inherit; font-size:14px; color:var(--accent); background:var(--card); border:1.5px solid var(--line); border-radius:10px; padding:6px 10px; min-height:36px; cursor:pointer}
 .ico{width:18px; height:18px; flex:none}
 .btn .ico{vertical-align:-3px; margin-right:6px}
 .card > p.fl{margin:0 0 -8px}
@@ -204,7 +202,7 @@ textarea.inp{resize:vertical; min-height:92px}
 .btn.ghost:hover{border-color:var(--ink-soft)}
 .btn.small{font-size:16px; min-height:44px; padding:8px 14px}
 .btn small{font-family:var(--f-body); font-size:13px; color:var(--ink-soft); margin-left:4px}
-.btn:focus-visible, .chip:focus-visible, .path:focus-visible, .sw:focus-visible, .helper-toggle:focus-visible, .more:focus-visible, .fix:focus-visible, .tool:focus-visible, .copy-sm:focus-visible, .copy-ico:focus-visible{outline:3px solid var(--accent); outline-offset:2px}
+.btn:focus-visible, .chip:focus-visible, .path:focus-visible, .sw:focus-visible, .helper-toggle:focus-visible, .more:focus-visible, .fix:focus-visible, .tool:focus-visible, .copy-sm:focus-visible{outline:3px solid var(--accent); outline-offset:2px}
 
 /* intro */
 .route{list-style:none; margin:0; padding:0; display:grid; grid-template-columns:repeat(auto-fit, minmax(210px, 1fr)); gap:10px 16px}
@@ -219,7 +217,6 @@ textarea.inp{resize:vertical; min-height:92px}
 /* result */
 .prompt{width:100%; font:inherit; font-size:17px; line-height:30px; color:var(--ink); background-color:var(--paper); background-image:linear-gradient(transparent 29px, var(--grid) 29px, var(--grid) 30px); background-size:100% 30px; background-position:0 8px; background-attachment:local; border:2px solid var(--line); border-radius:14px; padding:8px 16px; min-height:400px; resize:vertical}
 .prompt:focus{outline:none; border-color:var(--c); box-shadow:0 0 0 4px var(--c-soft)}
-.maker{max-width:320px}
 .sec{display:flex; flex-direction:column; gap:10px}
 .sec h3{font-size:20px}
 .checks{display:flex; flex-direction:column; gap:2px}
@@ -236,22 +233,12 @@ textarea.inp{resize:vertical; min-height:92px}
 .fix{font:inherit; font-size:14px; background:none; border:0; color:var(--accent); cursor:pointer; text-decoration:underline; text-underline-offset:3px; padding:6px; border-radius:8px}
 .up{margin:0; padding-left:1.2em; display:flex; flex-direction:column; gap:4px}
 .say{margin:0; background:var(--paper); border-radius:12px; padding:10px 14px; font-family:var(--f-hand); font-weight:700; font-size:21px; line-height:1.4}
-.print-only{display:none}
 
 .credit{text-align:center; font-size:13px; color:var(--ink-soft); letter-spacing:.04em; padding-top:4px}
 .toast{position:fixed; left:50%; transform:translateX(-50%); bottom:calc(20px + env(safe-area-inset-bottom, 0px)); background:var(--ink); color:var(--paper); padding:12px 18px; border-radius:14px; font-size:16px; max-width:calc(100% - 32px); box-shadow:var(--shadow); z-index:10}
 
 @media (prefers-reduced-motion: reduce){
   *{animation:none!important; transition:none!important}
-}
-@media print{
-  *{color:#000!important; background:transparent!important; box-shadow:none!important}
-  body{background:#fff!important}
-  html.big .app{zoom:1}
-  .top, .nav, .row, .maker-field, .prompt, .copy-ico, .no-print, .fix, .toast, .live{display:none!important}
-  .card{border:0; padding:0; animation:none}
-  .print-only{display:block; white-space:pre-wrap; font-family:var(--f-body); font-size:13pt; line-height:1.7; border:1px solid #999; border-radius:8px; padding:12px 16px}
-  .summary li{border:1px solid #ccc}
 }
 </style>
 </head>
@@ -274,7 +261,7 @@ textarea.inp{resize:vertical; min-height:92px}
 (function(){
   var KEY = 'idea-stairs-v2';
   var KEY_BIG = 'idea-stairs-big';
-  var BLANK = {cat:'', s1:'', path:'', s2:'', who:'', when:'', grade:'', level:'', goal:'', act:'', result:'', name:'', colors:[], mood:'', top:'', mid:'', bot:'', maker:'', custom:'', customBase:''};
+  var BLANK = {cat:'', s1:'', path:'', s2:'', who:'', when:'', grade:'', level:'', goal:'', act:'', result:'', name:'', colors:[], mood:'', top:'', mid:'', bot:'', custom:'', customBase:''};
   var HEIGHTS = [0, 16, 26, 36, 46, 56];
   var FIELDS = {1:['s1'], 2:['s2'], 3:['who','when'], 4:['act','result'], 5:['name']};
   var COLORS = [
@@ -521,9 +508,6 @@ textarea.inp{resize:vertical; min-height:92px}
   var IP_RE = /마인크래프트|로블록스|포켓몬|피카츄|브롤스타즈|쿠키런|카카오프렌즈|산리오|디즈니|마리오|메이플|짱구|뽀로로|티니핑|헬로키티|스누피|도라에몽|원피스/;
   var HARD_RE = /로그인|회원\s?가입|채팅|메시지를? 보내|온라인|실시간|대전|멀티|날씨|뉴스|서버|랭킹|전 세계|결제/;
   var MULTI_RE = /그리고|하고 나서|그 ?다음|또한|,|\s및\s/;
-
-  /* 파일로 바로 열었을 때만 저장·인쇄 버튼을 보여 준다 */
-  var standalone = (function(){ try{ return window.self === window.top; }catch(e){ return false; } })();
 
   function clone(o){ return JSON.parse(JSON.stringify(o)); }
   function load(){
@@ -896,27 +880,18 @@ textarea.inp{resize:vertical; min-height:92px}
       [4, '딱 하나', [t(state.act), t(state.result)].filter(Boolean).join(' → ')],
       [5, '그려봐', t(state.name)]
     ];
-    var saveRow = standalone
-      ? '<div class="field maker-field"><label class="fl" for="f-maker">만든 사람 <span class="sub small">(별명도 괜찮아요. 저장·인쇄할 때만 들어가요)</span></label>' +
-        '<input class="inp maker" id="f-maker" data-f="maker" type="text" autocomplete="off" placeholder="예: 5학년 2반 축구왕" value="' + esc(state.maker) + '"></div>' +
-        '<div class="row"><button type="button" class="btn ghost small" data-act="savetxt">텍스트 파일로 저장</button><button type="button" class="btn ghost small" data-act="print">인쇄하기</button></div>'
-      : '';
-
     var h = cardOpen(5, c.emo + ' ' + c.name + ' · 꼭대기 도착') +
       '<h2 class="q" id="head" tabindex="-1">내 앱 주문서 완성!</h2>' +
-      '<p class="sub no-print">주문서를 복사해서 AI 채팅창에 붙여 넣어 봐. 고치고 싶은 곳은 여기서 바로 고쳐도 돼.</p>' +
+      '<p class="sub">주문서를 복사해서 AI 채팅창에 붙여 넣어 봐. 고치고 싶은 곳은 여기서 바로 고쳐도 돼.</p>' +
       '<label class="visually-hidden" for="f-prompt">AI에게 보낼 주문서</label>' +
-      '<div class="prompt-wrap"><textarea class="prompt" id="f-prompt" spellcheck="false">' + esc(currentPrompt()) + '</textarea>' +
-      '<button type="button" class="copy-ico" data-act="copy" aria-label="주문서 복사하기">' + ICO + '복사</button></div>' +
-      '<div class="print-only" id="printBox"></div>' +
+      '<textarea class="prompt" id="f-prompt" spellcheck="false">' + esc(currentPrompt()) + '</textarea>' +
       '<div class="row"><button type="button" class="btn primary" data-act="copy">' + ICO + '주문서 복사하기</button></div>' +
-      saveRow +
       (warn ? '<div class="live">' + warn + '</div>' : '') +
-      '<div class="sec no-print"><h3>보내기 전에 체크</h3><div class="checks">' +
+      '<div class="sec"><h3>보내기 전에 체크</h3><div class="checks">' +
       ['친구의 진짜 이름이나 사진을 넣지 않았어요', '만화·게임 캐릭터 대신 내가 만든 이름과 캐릭터를 써요', c.check].map(function(c, ix){
         return '<label for="chk' + ix + '"><input type="checkbox" id="chk' + ix + '" class="chk"><span>' + c + '</span></label>';
       }).join('') + '</div><div class="live" id="ready" aria-live="polite"></div></div>' +
-      '<div class="sec no-print"><h3>AI가 이상하게 만들었다면? 이렇게 말해 봐</h3>' +
+      '<div class="sec"><h3>AI가 이상하게 만들었다면? 이렇게 말해 봐</h3>' +
       '<p class="sub small">한 번에 하나씩만 말해야 AI가 헷갈리지 않아.</p><ul class="fixes">' +
       FIXES.map(function(f, ix){
         return '<li><span>' + esc(f) + '</span><button type="button" class="copy-sm" data-act="copyfix" data-k="' + ix + '">복사</button></li>';
@@ -1009,32 +984,6 @@ textarea.inp{resize:vertical; min-height:92px}
         navigator.clipboard.writeText(txt).then(function(){ toast(okMsg); }, legacy);
       } else legacy();
     }catch(e){ legacy(); }
-  }
-
-  function saveTxt(){
-    var ta = document.getElementById('f-prompt');
-    if(!ta) return;
-    var head = (t(state.maker) ? '만든 사람: ' + t(state.maker) + '\n' : '') + '앱 종류: ' + cat().name + '\n' + '앱 이름: ' + (t(state.name) || '내 앱') + '\n\n';
-    var body = '﻿' + head + ta.value + '\n\nBy Mindstream LAB Awesome JWY\n';
-    try{
-      var blob = new Blob([body], {type:'text/plain;charset=utf-8'});
-      var a = document.createElement('a');
-      a.href = URL.createObjectURL(blob);
-      a.download = (t(state.name) || '내앱').replace(/[\\\/:*?"<>|]/g, '').slice(0, 30) + '_주문서.txt';
-      document.body.appendChild(a);
-      a.click();
-      setTimeout(function(){ URL.revokeObjectURL(a.href); a.remove(); }, 800);
-      toast('주문서를 파일로 저장했어.');
-    }catch(e){
-      toast('저장이 막혀 있어. 복사해서 메모장에 붙여 넣어 줘.');
-    }
-  }
-  function printNow(){
-    var ta = document.getElementById('f-prompt');
-    var box = document.getElementById('printBox');
-    if(!ta || !box) return;
-    box.textContent = (t(state.maker) ? '만든 사람: ' + t(state.maker) + '\n\n' : '') + ta.value;
-    try{ window.print(); }catch(e){ toast('인쇄가 막혀 있어. 텍스트 파일로 저장해 줘.'); }
   }
 
   function setBig(on){
@@ -1144,9 +1093,7 @@ textarea.inp{resize:vertical; min-height:92px}
       if(p) copyText(p.value, '복사했어! AI 채팅창에 붙여 넣어 봐.', p);
     } else if(act === 'copyfix'){
       copyText(FIXES[Number(el.dataset.k)], '복사했어! AI에게 붙여 넣어 봐.');
-    } else if(act === 'savetxt') saveTxt();
-    else if(act === 'print') printNow();
-    else if(act === 'big') setBig(!document.documentElement.classList.contains('big'));
+    } else if(act === 'big') setBig(!document.documentElement.classList.contains('big'));
     else if(act === 'reset'){
       if(!resetArmed){
         resetArmed = true;
