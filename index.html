@@ -643,7 +643,7 @@ textarea.inp{resize:vertical; min-height:92px}
   function check4(){
     var a = t(state.act), r = t(state.result), out = '';
     var hard = (a + ' ' + r).match(HARD_RE);
-    if(hard) out += note('info', '어려운 신호', '‘' + hard[0] + '’ 같은 건 HTML 파일 하나로 만들기 어려워. 가짜 데이터로 흉내 내거나, 혼자 쓰는 버전으로 바꿔 볼까?');
+    if(hard) out += note('info', '어려운 신호', '‘' + hard[0] + '’ 같은 건 웹앱 하나로 만들기 어려워. 가짜 데이터로 흉내 내거나, 혼자 쓰는 버전으로 바꿔 볼까?');
     if(r && (MULTI_RE.test(r) || r.length > 40)) out += note('warn', '잠깐!', '기능이 두 개 이상인 것 같아. 제일 중요한 하나만 남겨 볼까?');
     else if(a && r && !hard) out += note('ok', '통과', '버튼 하나, 결과 하나로 설명돼. 딱 좋아!');
     return out;
@@ -895,7 +895,7 @@ textarea.inp{resize:vertical; min-height:92px}
     var allText = [state.s2, state.act, state.result, state.rule, state.top, state.mid, state.bot].join(' ');
     var hard = allText.match(HARD_RE);
     var warn = '';
-    if(hard) warn += note('info', '어려운 신호', '‘' + hard[0] + '’ 같은 건 HTML 파일 하나로 만들기 어려워. AI에게 “가짜 데이터로 흉내 내 줘”라고 덧붙여 보자.');
+    if(hard) warn += note('info', '어려운 신호', '‘' + hard[0] + '’ 같은 건 웹앱 하나로 만들기 어려워. AI에게 “가짜 데이터로 흉내 내 줘”라고 덧붙여 보자.');
     warn += checkIP();
 
     var c = cat();
